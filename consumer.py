@@ -14,6 +14,7 @@ MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", 1883))
 MQTT_TOPIC = "/maquina/+/venta/dispensado"
 # La URL correcta ahora se cargará desde el .env
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000/api/v1/contenedores/dispensar")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
 
 # --- Lógica del Consumidor ---
 
@@ -23,20 +24,22 @@ def on_connect(client, userdata, flags, rc):
         print(f"Conectado exitosamente al Broker MQTT en {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
         # Suscribirse al tópico. El '+' es un comodín para cualquier ID de máquina.
         client.subscribe(MQTT_TOPIC)
+        client.subscribe("sensores/temperatura")
         print(f"Suscrito al tópico: {MQTT_TOPIC}")
     else:
         print(f"Fallo al conectar, código de retorno: {rc}")
 
 def on_message(client, userdata, msg):
-    if 'temperatura' in msg.topic:
-        # Procesar datos de temperatura
+    if msg.topic == "sensores/temperatura":
         payload = json.loads(msg.payload.decode())
-        contenedor_id = payload['contenedor_id']
+        contenedor_id = payload['id_contenedor']  # CLAVE CORRECTA
         temperatura = payload['temperatura']
         
-        # Llamar al nuevo endpoint de la API
-        api_url = f"{API_ENDPOINT}/{contenedor_id}/temperatura"
+        # Actualizar temperatura via API
+        api_url = f"{os.getenv('API_BASE_URL', 'http://localhost:8000/api/v1')}/contenedores/{contenedor_id}/temperatura"
         response = requests.put(api_url, json={"temperatura": temperatura})
+        return
+    
     """Se ejecuta cuando se recibe un mensaje del broker."""
     print(f"Mensaje recibido en el tópico {msg.topic}")
     
