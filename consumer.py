@@ -7,19 +7,15 @@ from dotenv import load_dotenv
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-# --- Configuración ---
-# Es una buena práctica usar variables de entorno para esto en un entorno de producción
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", 1883))
 MQTT_TOPIC_DISPENSADO = "/maquina/+/venta/dispensado"
-MQTT_TOPIC_SENSORES = "/+/sensor/#"  # CORREGIDO: Se añadió la barra '/' al inicio
+MQTT_TOPIC_SENSORES = "/+/sensor/#"
 
 # La URL correcta ahora se cargará desde el .env
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
 API_ENDPOINT_DISPENSAR = f"{API_BASE_URL}/contenedores/dispensar"
 API_ENDPOINT_SENSORES = f"{API_BASE_URL}/sensores"
-
-# --- Lógica del Consumidor ---
 
 def on_connect(client, userdata, flags, rc):
     """Se ejecuta cuando el cliente se conecta al broker."""
@@ -37,7 +33,7 @@ def on_message(client, userdata, msg):
     print(f"Mensaje recibido en el tópico {msg.topic}")
     
     try:
-        topic_parts = msg.topic.strip('/').split('/')  # Eliminar barras iniciales/finales
+        topic_parts = msg.topic.strip('/').split('/')  
     
         # --- Lógica para Sensores (formato: machine_id/sensor/sensor_type) ---
         if len(topic_parts) >= 2 and topic_parts[1] == 'sensor':
@@ -75,6 +71,7 @@ def on_message(client, userdata, msg):
 
             if response.status_code == 201:
                 print("Éxito: La API creó el registro del sensor correctamente.")
+                print("Los datos se enviarán automáticamente por WebSocket desde la API.")
             else:
                 print(f"Error al enviar datos del sensor: La API devolvió un estado {response.status_code}")
                 print("Detalle del error:", response.text)
@@ -116,10 +113,8 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print(f"Ocurrió un error inesperado: {e}")
 
-
 # --- Inicialización del Cliente MQTT ---
-
-client = mqtt.Client() # Actualizado para eliminar la advertencia de desuso
+client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
 
@@ -129,7 +124,8 @@ try:
     client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, 60)
 except Exception as e:
     print(f"No se pudo establecer la conexión inicial con el broker: {e}")
-    exit(1) # Salir si no se puede conectar al inicio
+    exit(1)
 
 # Bucle principal para mantener el script corriendo y escuchando
+print("Consumer MQTT iniciado. Presiona Ctrl+C para detener.")
 client.loop_forever()
