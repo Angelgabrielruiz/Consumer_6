@@ -58,6 +58,8 @@ def on_message(client, userdata, msg):
                 unit = "pH"
             elif "ultrasonico" in sensor_type:
                 unit = "cm"
+            elif "moneda" in sensor_type:
+                unit = "mxn"
             
             api_data = {
                 "machine_id": machine_id,
