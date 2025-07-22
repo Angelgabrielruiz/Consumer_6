@@ -63,8 +63,26 @@ def on_message(client, userdata, msg):
                 unit = "pH"
             elif "ultrasonico" in sensor_type:
                 unit = "cm"
+            # En la sección de sensores, después de la línea 82
             elif "moneda" in sensor_type:
                 unit = "mxn"
+                
+                # NUEVO: Si es sensor de moneda, agregar crédito
+                if value_numeric > 0:  # Solo monedas válidas
+                    credito_data = {
+                        "maquina_id": machine_id,
+                        "cantidad": value_numeric
+                    }
+                    
+                    print(f"Agregando crédito: {credito_data}")
+                    credito_response = requests.post(f"{API_BASE_URL}/balance/agregar-credito", json=credito_data)
+                    
+                    if credito_response.status_code == 200:
+                        print(f"✅ Crédito agregado exitosamente: ${value_numeric}")
+                        print("Balance actualizado:", credito_response.json())
+                    else:
+                        print(f"❌ Error al agregar crédito: {credito_response.status_code}")
+                        print("Detalle:", credito_response.text)
             
             api_data = {
                 "machine_id": machine_id,
