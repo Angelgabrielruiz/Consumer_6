@@ -18,6 +18,8 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
 API_ENDPOINT_DISPENSAR = f"{API_BASE_URL}/contenedores/dispensar"
 API_ENDPOINT_SENSORES = f"{API_BASE_URL}/sensores"
 API_ENDPOINT_VALVULAS = f"{API_BASE_URL}/valvulas/confirmar-dispensado"
+# Agregar endpoint de ventas
+API_ENDPOINT_VENTAS = f"{API_BASE_URL}/ventas"
 
 def on_connect(client, userdata, flags, rc):
     """Se ejecuta cuando el cliente se conecta al broker."""
@@ -130,9 +132,29 @@ def on_message(client, userdata, msg):
             print(f"Enviando confirmación de dispensado a {API_ENDPOINT_DISPENSAR}...")
             response = requests.post(API_ENDPOINT_DISPENSAR, json=api_data)
             
+            # En la sección de confirmación de válvulas (línea ~120), después de actualizar el contenedor:
             if response.status_code == 200:
                 print("Éxito: La API actualizó el contenedor después del dispensado de válvula.")
                 print("Respuesta de la API:", response.json())
+                
+                # NUEVO: Registrar la venta
+                venta_data = {
+                    "id_maquina": id_maquina,
+                    "id_producto": id_producto,
+                    "cantidad_dispensada": cantidad_dispensada,
+                    "pin_valvula": pin_valvula,
+                    "metodo_dispensado": "valvula"
+                }
+                
+                print(f"Registrando venta: {venta_data}")
+                venta_response = requests.post(API_ENDPOINT_VENTAS, json=venta_data)
+                
+                if venta_response.status_code == 201:
+                    print("✅ Venta registrada exitosamente")
+                    print("Datos de la venta:", venta_response.json())
+                else:
+                    print(f"❌ Error al registrar venta: {venta_response.status_code}")
+                    print("Detalle:", venta_response.text)
             else:
                 print(f"Error al actualizar contenedor: La API devolvió un estado {response.status_code}")
                 print("Detalle del error:", response.text)
