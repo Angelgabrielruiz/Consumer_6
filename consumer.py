@@ -7,15 +7,17 @@ from dotenv import load_dotenv
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "50.19.13.195")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", 1883))
 MQTT_TOPIC_DISPENSADO = "/maquina/+/venta/dispensado"
 MQTT_TOPIC_SENSORES = "/+/sensor/#"
+MQTT_TOPIC_VALVULAS = "/maquina/+/valvula/+/confirmacion"
 
 # La URL correcta ahora se cargará desde el .env
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
 API_ENDPOINT_DISPENSAR = f"{API_BASE_URL}/contenedores/dispensar"
 API_ENDPOINT_SENSORES = f"{API_BASE_URL}/sensores"
+API_ENDPOINT_VALVULAS = f"{API_BASE_URL}/valvulas/confirmar-dispensado"
 
 def on_connect(client, userdata, flags, rc):
     """Se ejecuta cuando el cliente se conecta al broker."""
@@ -24,7 +26,8 @@ def on_connect(client, userdata, flags, rc):
         # Suscribirse a los tópicos
         client.subscribe(MQTT_TOPIC_DISPENSADO)
         client.subscribe(MQTT_TOPIC_SENSORES)
-        print(f"Suscrito a los tópicos: {MQTT_TOPIC_DISPENSADO} y {MQTT_TOPIC_SENSORES}")
+        client.subscribe(MQTT_TOPIC_VALVULAS)
+        print(f"Suscrito a los tópicos: {MQTT_TOPIC_DISPENSADO}, {MQTT_TOPIC_SENSORES} y {MQTT_TOPIC_VALVULAS}")
     else:
         print(f"Fallo al conectar, código de retorno: {rc}")
 
@@ -103,6 +106,37 @@ def on_message(client, userdata, msg):
             else:
                 print(f"Error en dispensado: La API devolvió un estado {response.status_code}")
                 print("Detalle del error:", response.text)
+            return
+
+        # --- Lógica para Válvulas (formato: /maquina/{id}/valvula/{pin}/confirmacion) ---
+        if len(topic_parts) == 5 and topic_parts[0] == 'maquina' and topic_parts[2] == 'valvula' and topic_parts[4] == 'confirmacion':
+            id_maquina = int(topic_parts[1])
+            pin_valvula = int(topic_parts[3])
+            payload = json.loads(msg.payload.decode('utf-8'))
+            
+            id_producto = int(payload['id_producto'])
+            cantidad_dispensada = float(payload['cantidad_dispensada'])
+            estado = payload.get('estado', 'completado')
+            
+            print(f"Confirmación de válvula recibida: Máquina={id_maquina}, Pin={pin_valvula}, Producto={id_producto}, Cantidad={cantidad_dispensada}")
+            
+            # Actualizar el contenedor con la cantidad dispensada
+            api_data = {
+                "id_maquina": id_maquina,
+                "id_producto": id_producto,
+                "cantidad_dispensada": cantidad_dispensada
+            }
+            
+            print(f"Enviando confirmación de dispensado a {API_ENDPOINT_DISPENSAR}...")
+            response = requests.post(API_ENDPOINT_DISPENSAR, json=api_data)
+            
+            if response.status_code == 200:
+                print("Éxito: La API actualizó el contenedor después del dispensado de válvula.")
+                print("Respuesta de la API:", response.json())
+            else:
+                print(f"Error al actualizar contenedor: La API devolvió un estado {response.status_code}")
+                print("Detalle del error:", response.text)
+            return
         else:
             print(f"Error: El tópico '{msg.topic}' no coincide con ningún patrón conocido.")
 
