@@ -7,14 +7,14 @@ from dotenv import load_dotenv
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "50.19.13.195")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", 1883))
 MQTT_TOPIC_DISPENSADO = "/maquina/+/venta/dispensado"
 MQTT_TOPIC_SENSORES = "/+/sensor/#"
 MQTT_TOPIC_VALVULAS = "/maquina/+/valvula/+/confirmacion"
 
 # La URL correcta ahora se cargará desde el .env
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1")
+API_BASE_URL = os.getenv("API_BASE_URL")
 API_ENDPOINT_DISPENSAR = f"{API_BASE_URL}/contenedores/dispensar"
 API_ENDPOINT_SENSORES = f"{API_BASE_URL}/sensores"
 API_ENDPOINT_VALVULAS = f"{API_BASE_URL}/valvulas/confirmar-dispensado"
